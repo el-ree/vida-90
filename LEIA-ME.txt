@@ -1,0 +1,68 @@
+VIDA 90 — Versão para qualquer navegador
+========================================
+
+O QUE É
+-------
+Esta é a versão portátil do seu aplicativo VIDA 90
+(Vitória · Intensidade · Disciplina · Ação).
+Ela é igual ao app: abas Diária, Semanal e Mensal, roda de 31 dias,
+ciclos de prática por hábito, Fazer Menos / Fazer Mais — mas roda
+100% offline, sem internet, sem servidor e sem conta.
+
+COMO ABRIR
+----------
+1. Abra a pasta "vida-90-navegador".
+2. Dê dois cliques no arquivo vida-90.html
+   (ou arraste o arquivo para dentro de uma janela do navegador).
+3. Funciona em qualquer navegador moderno: Chrome, Edge, Firefox,
+   Safari — no computador, no celular ou no tablet.
+Não precisa instalar nada nem estar conectado à internet.
+
+USAR NO CELULAR
+---------------
+A página é responsiva: se adapta à largura do telefone, sem rolagem
+para os lados, com botões e círculos de check grandes para tocar.
+
+Para deixar o app na tela inicial do celular (como um aplicativo):
+- Android (Chrome): abra o vida-90.html, toque no menu ⋮ do Chrome
+  e escolha "Adicionar à tela inicial".
+- iPhone (Safari): abra o vida-90.html, toque no botão Compartilhar
+  (quadrado com seta para cima) e escolha "Adicionar à Tela de Início".
+
+Depois é só tocar no ícone VIDA 90 para abrir direto.
+
+ONDE FICAM OS DADOS
+-------------------
+Os dados (hábitos, marcações, tarefas e planos) ficam salvos no
+próprio navegador, naquele aparelho (recurso chamado localStorage).
+
+IMPORTANTE:
+- Se você usar navegadores ou aparelhos diferentes, cada um terá
+  a sua própria cópia dos dados — elas NÃO sincronizam sozinhas.
+- Limpar o histórico/dados do navegador apaga os dados do app.
+  Faça exportações de tempos em tempos para ter um backup.
+
+EXPORTAR E IMPORTAR (levar os dados para outro aparelho)
+---------------------------------------------------------
+No final da página do app há a seção "Seus dados":
+
+- EXPORTAR: gera o arquivo vida90-dados.json com tudo o que está
+  no app. Guarde esse arquivo (pode mandar para você mesmo por
+  e-mail, WhatsApp, pendrive etc.).
+- IMPORTAR: em outro navegador/aparelho, abra o vida-90.html,
+  toque em "Importar dados (.json)" e escolha o arquivo exportado.
+  Os dados daquele navegador são substituídos pelos do arquivo.
+
+COMEÇA COM OS SEUS DADOS ATUAIS
+-------------------------------
+Ao abrir pela primeira vez, o app já vem com:
+- Hábitos: Pular corda (azul), Estudar inglês (verde) e
+  Ler a Bíblia (vermelho), ciclo de 3 meses desde 30/10/2026.
+- A tarefa de 30/10/2026 (Manhã, 07:00, Pular corda) já marcada.
+- Planos de outubro e novembro/2026 com Objetivo, Fazer Menos
+  e Fazer Mais preenchidos.
+
+ARQUIVOS DESTA PASTA
+--------------------
+- vida-90.html   → o aplicativo completo (um arquivo só, é só abrir)
+- LEIA-ME.txt    → este arquivo de instruções
