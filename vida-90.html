@@ -114,6 +114,11 @@
       .progressbar { height: 5px; background: var(--cell-empty); border-radius: 3px; margin-top: 5px; overflow: hidden; }
       .progressbar i { display: block; height: 100%; border-radius: 3px; }
       .cycle-done-tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); border: 1.5px solid var(--accent); border-radius: 20px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+      .missed-tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--danger); border: 1.5px solid var(--danger); border-radius: 20px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+      .checkbtn.locked { background: var(--danger); border-color: var(--danger); color: #fff; font-size: 15px; cursor: not-allowed; }
+      .task-row .checkbtn.locked { font-size: 12.5px; }
+      .pick.locked { opacity: 0.55; cursor: not-allowed; }
+      .pick .lock-note { margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--danger); white-space: nowrap; }
 
       /* ---------- Period blocks (Diária) ---------- */
       .period { margin-top: 24px; }
@@ -638,7 +643,18 @@
         if (ci.status === "done") return "Ciclo de " + h.cycleMonths + (h.cycleMonths === 1 ? " mês" : " meses") + " encerrado em " + fmtBR(ci.end);
         return "Dia " + ci.dayNum + " de " + ci.total + " · faltam " + ci.remaining + (ci.remaining === 1 ? " dia" : " dias") + " · " + ci.pct + "% do ciclo";
       }
+      /* Dia perdido: dia já encerrado (antes de hoje, no horário local), dentro
+         do ciclo do hábito (a partir de cycleStart) e NÃO concluído. Fica
+         vermelho e travado — nenhuma interação pode alterá-lo depois. */
+      function isMissedDay(h, day) {
+        if (!h) return false;
+        if (day >= todayKey()) return false; /* hoje e futuro seguem editáveis */
+        if (day < h.cycleStart) return false; /* antes do ciclo: fora da regra */
+        return !isMarked(h.id, day);
+      }
       function toggleManualMark(habitId, day) {
+        var hLock = habitById(habitId);
+        if (hLock && isMissedDay(hLock, day)) return; /* dia perdido: travado */
         var key = habitId + "|" + day;
         var origin = markOrigin(habitId, day);
         if (origin === "task" && !data.marks[key]) {
@@ -716,14 +732,18 @@
           var h = habits[hi];
           var marked = isMarked(h.id, day);
           var origin = markOrigin(h.id, day);
+          var missed = isMissedDay(h, day);
           var ci = cycleInfo(h, tk);
           html += '<div class="habit-row">' +
             '<span class="dot" style="background:' + h.color + '"></span>' +
             '<div class="grow"><span class="hname">' + esc(h.name) + "</span>" +
             (ci.status === "done" ? '<span class="cycle-done-tag">Ciclo concluído</span>' : "") +
+            (missed ? '<span class="missed-tag">🔒 Dia perdido</span>' : "") +
             '<div class="hmeta">' + esc(cycleText(h, tk)) + "</div>" +
             '<div class="progressbar"><i style="width:' + ci.pct + "%;background:" + h.color + '"></i></div></div>' +
-            '<button class="checkbtn' + (marked ? " done" : "") + (origin === "task" ? " derived" : "") + '" data-action="habit-toggle" data-habit="' + h.id + '" data-day="' + day + '" aria-label="Marcar ' + esc(h.name) + '" style="' + (marked ? "background:" + h.color + ";border-color:" + h.color + ";color:#fff" : "") + '">' + CHECK_SVG + "</button>" +
+            (missed
+              ? '<button class="checkbtn locked" aria-label="' + esc(h.name) + ' — dia perdido, travado">🔒</button>'
+              : '<button class="checkbtn' + (marked ? " done" : "") + (origin === "task" ? " derived" : "") + '" data-action="habit-toggle" data-habit="' + h.id + '" data-day="' + day + '" aria-label="Marcar ' + esc(h.name) + '" style="' + (marked ? "background:" + h.color + ";border-color:" + h.color + ";color:#fff" : "") + '">' + CHECK_SVG + "</button>") +
             "</div>";
         }
 
@@ -736,12 +756,15 @@
           for (var ti = 0; ti < tasks.length; ti++) {
             var t = tasks[ti];
             var th = t.habitId ? habitById(t.habitId) : null;
+            var tLocked = th ? isMissedDay(th, t.day) : false;
             html += '<div class="task-row">' +
               '<span class="num">' + (ti + 1) + ".</span>" +
               '<span class="ttext' + (t.done ? " done-t" : "") + '">' + (th ? '<span class="habit-chip-inline" style="background:' + th.color + '"></span>' : "") + esc(t.text) + "</span>" +
               '<span class="ttime">' + esc(t.time || "") + "</span>" +
-              '<button class="checkbtn' + (t.done ? " done" : "") + '" data-action="task-toggle" data-id="' + t.id + '" aria-label="Marcar linha" style="' + (t.done ? "background:var(--ink);border-color:var(--ink);color:var(--bg)" : "") + '">' + CHECK_SVG + "</button>" +
-              '<button class="iconbtn" data-action="task-edit" data-id="' + t.id + '" aria-label="Editar linha">✎</button>' +
+              (tLocked
+                ? '<button class="checkbtn locked" aria-label="Linha travada — dia perdido">🔒</button>'
+                : '<button class="checkbtn' + (t.done ? " done" : "") + '" data-action="task-toggle" data-id="' + t.id + '" aria-label="Marcar linha" style="' + (t.done ? "background:var(--ink);border-color:var(--ink);color:var(--bg)" : "") + '">' + CHECK_SVG + "</button>" +
+                  '<button class="iconbtn" data-action="task-edit" data-id="' + t.id + '" aria-label="Editar linha">✎</button>') +
               "</div>";
           }
           html += '<button class="addbtn" data-action="task-add" data-period="' + per.key + '">+ Adicionar linha</button></div>';
@@ -811,6 +834,7 @@
           return;
         }
         html += '<p class="small muted" style="margin:0 0 14px">Hábito: <b style="color:var(--ink)">' + esc(h.name) + "</b> · " + esc(cycleText(h, tk)) + "</p>";
+        html += '<p class="small muted" style="margin:-8px 0 14px">Dias passados não feitos ficam em <b style="color:var(--danger)">vermelho 🔒</b> e travados — não dá para marcar depois.</p>';
 
         var segments = [
           { label: "1ª", sub: "Semana", from: 1, to: 7 },
@@ -831,15 +855,19 @@
             var countable = dk >= h.cycleStart && dk <= tk;
             var done = isMarked(h.id, dk);
             if (countable) { if (done) vic++; else der++; }
-            days.push({ day: dk, done: done, countable: countable, future: dk > tk });
+            days.push({ day: dk, done: done, countable: countable, future: dk > tk, missed: isMissedDay(h, dk) });
           }
           totVic += vic; totDer += der;
           var n = days.length, size = 120, cx = 60, cy = 60, r0 = 33, r1 = 57;
           var svg = '<svg viewBox="0 0 ' + size + " " + size + '" aria-hidden="true">';
           for (var k = 0; k < n; k++) {
             var a0 = k * (360 / n) + 1.6, a1 = (k + 1) * (360 / n) - 1.6;
-            var fill = days[k].done ? h.color : (days[k].future ? "var(--cell-future)" : "var(--cell-empty)");
+            var fill = days[k].done ? h.color : (days[k].missed ? "var(--danger)" : (days[k].future ? "var(--cell-future)" : "var(--cell-empty)"));
             svg += '<path d="' + annularPath(cx, cy, r0, r1, a0, a1) + '" fill="' + fill + '" stroke="var(--surface)" stroke-width="1.5"/>';
+            if (days[k].missed) {
+              var mp = polar(cx, cy, (r0 + r1) / 2, (a0 + a1) / 2);
+              svg += '<text x="' + (Math.round(mp[0] * 10) / 10) + '" y="' + (Math.round(mp[1] * 10) / 10 + 4) + '" text-anchor="middle" font-size="11" fill="#ffffff" pointer-events="none">🔒</text>';
+            }
           }
           svg += '<text x="60" y="58" text-anchor="middle" font-size="14.5" font-weight="800" fill="var(--ink)">' + seg.label + "</text>" +
                  '<text x="60" y="74" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">' + seg.sub + "</text></svg>";
@@ -886,9 +914,19 @@
             var h = habits[hi];
             var r0 = hole + hi * thick, r1 = r0 + thick - 2;
             var marked = valid && isMarked(h.id, dk);
-            var fill = !valid ? "none" : (marked ? h.color : "var(--cell-empty)");
-            svg += '<path d="' + annularPath(cx, cy, r0, r1, a0, a1) + '" fill="' + fill + '" stroke="var(--surface)" stroke-width="1"' +
-              (valid ? ' data-action="cell" data-habit="' + h.id + '" data-day="' + dk + '" style="cursor:pointer"><title>' + esc(h.name) + " · dia " + d + "</title>" : ">") + "</path>";
+            var missed = valid && isMissedDay(h, dk);
+            var fill = !valid ? "none" : (marked ? h.color : (missed ? "var(--danger)" : "var(--cell-empty)"));
+            var pathStr = '<path d="' + annularPath(cx, cy, r0, r1, a0, a1) + '" fill="' + fill + '" stroke="var(--surface)" stroke-width="1"';
+            if (!valid) {
+              svg += pathStr + "></path>";
+            } else if (missed) {
+              svg += pathStr + ' style="cursor:not-allowed"><title>' + esc(h.name) + " · dia " + d + " · 🔒 dia perdido (travado)</title></path>";
+              var cp = polar(cx, cy, (r0 + r1) / 2, (a0 + a1) / 2);
+              var cfs = Math.max(9, Math.min(15, (r1 - r0) * 0.5));
+              svg += '<text x="' + (Math.round(cp[0] * 10) / 10) + '" y="' + (Math.round(cp[1] * 10) / 10 + cfs * 0.36) + '" text-anchor="middle" font-size="' + cfs + '" fill="#ffffff" pointer-events="none">🔒</text>';
+            } else {
+              svg += pathStr + ' data-action="cell" data-habit="' + h.id + '" data-day="' + dk + '" style="cursor:pointer"><title>' + esc(h.name) + " · dia " + d + "</title></path>";
+            }
           }
           var mid = (a0 + a1) / 2;
           var np = polar(cx, cy, outer + 22, mid);
@@ -897,7 +935,7 @@
         svg += "</svg>";
         html += '<div class="wheel-wrap">' + svg +
           '<div class="wheel-center"><div class="lbl">Mês/Ano</div><div class="my">' + monthShortLabel(mk) + '</div><div class="obj">Objetivo do mês</div></div></div>';
-        html += '<p class="small muted" style="text-align:center;margin:10px 0 0">Toque numa célula da roda para marcar ou desmarcar o dia daquele hábito.</p>';
+        html += '<p class="small muted" style="text-align:center;margin:10px 0 0">Toque numa célula da roda para marcar ou desmarcar o dia daquele hábito. Células em <b style="color:var(--danger)">vermelho 🔒</b> são dias perdidos: ficam travados e não podem mais ser marcados.</p>';
         html += "</div>";
 
         /* painel lateral */
@@ -948,11 +986,23 @@
 
       /* ================= Modal: tarefa ================= */
       function openTaskModal(period, task) {
+        if (task && task.habitId) {
+          var oh = habitById(task.habitId);
+          if (oh && isMissedDay(oh, task.day)) return; /* linha de dia perdido: travada */
+        }
         taskModal.period = period;
         taskModal.taskId = task ? task.id : null;
         taskModal.type = task ? (task.habitId ? "habit" : "free") : "habit";
         taskModal.habitId = task ? task.habitId : (activeHabits().length ? activeHabits()[0].id : null);
         if (!activeHabits().length) taskModal.type = "free";
+        if (!task && taskModal.type === "habit") {
+          var defH = habitById(taskModal.habitId);
+          if (defH && isMissedDay(defH, ui.day)) {
+            var altH = null, ahList = activeHabits();
+            for (var axi = 0; axi < ahList.length; axi++) if (!isMissedDay(ahList[axi], ui.day)) { altH = ahList[axi]; break; }
+            if (altH) taskModal.habitId = altH.id; else taskModal.type = "free";
+          }
+        }
         document.getElementById("task-modal-title").textContent = task ? "Editar linha" : "Adicionar linha";
         document.getElementById("task-text").value = task && !task.habitId ? task.text : "";
         document.getElementById("task-time").value = task ? (task.time || "") : "";
@@ -966,7 +1016,11 @@
         var habits = activeHabits();
         for (var i = 0; i < habits.length; i++) {
           var h = habits[i];
-          html += '<button class="pick" data-action="task-pick" data-kind="habit" data-id="' + h.id + '" aria-pressed="' + (taskModal.type === "habit" && taskModal.habitId === h.id) + '"><span class="dot" style="background:' + h.color + '"></span>' + esc(h.name) + "</button>";
+          if (isMissedDay(h, ui.day)) {
+            html += '<button class="pick locked" aria-pressed="false" aria-disabled="true"><span class="dot" style="background:' + h.color + '"></span>' + esc(h.name) + '<span class="lock-note">🔒 dia perdido</span></button>';
+          } else {
+            html += '<button class="pick" data-action="task-pick" data-kind="habit" data-id="' + h.id + '" aria-pressed="' + (taskModal.type === "habit" && taskModal.habitId === h.id) + '"><span class="dot" style="background:' + h.color + '"></span>' + esc(h.name) + "</button>";
+          }
         }
         html += '<button class="pick" data-action="task-pick" data-kind="free" aria-pressed="' + (taskModal.type === "free") + '"><span class="free-ic">✎</span>Tarefa livre</button>';
         list.innerHTML = html;
@@ -982,6 +1036,10 @@
         } else {
           text = document.getElementById("task-text").value.trim();
           if (!text) { toast("Escreva o texto da tarefa livre."); return; }
+        }
+        if (habitId) {
+          var sh = habitById(habitId);
+          if (sh && isMissedDay(sh, ui.day)) { toast("🔒 Dia perdido: esse hábito está travado nesse dia e não pode ser alterado."); return; }
         }
         if (taskModal.taskId) {
           for (var i = 0; i < data.tasks.length; i++) {
@@ -1117,7 +1175,12 @@
         else if (action === "cell") { ui.menMonth = monthKeyOf(node.getAttribute("data-day")); toggleManualMark(node.getAttribute("data-habit"), node.getAttribute("data-day")); }
         else if (action === "task-toggle") {
           var id = node.getAttribute("data-id");
-          for (var i = 0; i < data.tasks.length; i++) if (data.tasks[i].id === id) data.tasks[i].done = !data.tasks[i].done;
+          for (var i = 0; i < data.tasks.length; i++) {
+            if (data.tasks[i].id === id) {
+              var tgHabit = data.tasks[i].habitId ? habitById(data.tasks[i].habitId) : null;
+              if (!(tgHabit && isMissedDay(tgHabit, data.tasks[i].day))) data.tasks[i].done = !data.tasks[i].done;
+            }
+          }
           saveData(data); render();
         }
         else if (action === "task-add") { openTaskModal(node.getAttribute("data-period"), null); }
