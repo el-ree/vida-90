@@ -1198,7 +1198,7 @@
             rp: { name: "VIDA 90", id: location.hostname },
             user: { id: randomBytes(16), name: "vida90", displayName: "VIDA 90" },
             pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
-            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "discouraged" },
+            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
             timeout: 60000
           }
         }).then(function (cred) {
@@ -1221,14 +1221,21 @@
           }
         }).then(function (assertion) { return !!assertion; });
       }
+      function typedConfirm(msg) {
+        var typed = prompt(msg + "\n\nPara confirmar, digite a palavra ZERAR:");
+        return typed === "ZERAR";
+      }
       function removeProtection() {
+        function off() { authSet(null); renderProtectArea(); toast("Proteção desativada."); }
         verifyDevice().then(function (ok) {
-          if (!ok) { toast("Confirmação não concluída — a proteção continua ativa."); return; }
-          authSet(null); renderProtectArea();
-          toast("Proteção desativada.");
-        }).catch(function () { toast("Confirmação cancelada — a proteção continua ativa."); });
+          if (ok) { off(); return; }
+          if (typedConfirm("A confirmação do aparelho não foi concluída. Quer desativar a proteção mesmo assim?")) off();
+        }).catch(function () {
+          if (typedConfirm("O aparelho não respondeu à confirmação. Quer desativar a proteção mesmo assim?")) off();
+        });
       }
       function doReset() {
+        try { sessionStorage.setItem("vida90-reset-ok", "1"); } catch (e) {}
         try { localStorage.removeItem(STORE_KEY); } catch (e) {}
         location.reload();
       }
@@ -1238,15 +1245,22 @@
         if (a && webauthnOK()) {
           toast("Confirme com sua digital ou a senha do celular…");
           verifyDevice().then(function (ok) {
-            if (ok) doReset();
-            else toast("Confirmação não concluída — nada foi apagado.");
-          }).catch(function () { toast("Confirmação cancelada — nada foi apagado."); });
+            if (ok) { doReset(); return; }
+            if (typedConfirm("A confirmação do aparelho não foi concluída — nada foi apagado ainda. Quer reiniciar mesmo assim?")) doReset();
+          }).catch(function (err) {
+            var en = err && err.name ? " (" + err.name + ")" : "";
+            if (typedConfirm("O aparelho não respondeu à confirmação" + en + " — nada foi apagado ainda. Quer reiniciar mesmo assim?")) doReset();
+          });
         } else {
-          var typed = prompt("Para confirmar o reinício, digite a palavra ZERAR:");
-          if (typed === "ZERAR") doReset();
-          else if (typed !== null) toast("Palavra incorreta — nada foi apagado.");
+          if (typedConfirm("Reiniciar o VIDA 90 e apagar todos os dados deste aparelho?")) doReset();
         }
       }
+      try {
+        if (sessionStorage.getItem("vida90-reset-ok")) {
+          sessionStorage.removeItem("vida90-reset-ok");
+          setTimeout(function () { toast("VIDA 90 reiniciado: tudo zerado ✔"); }, 400);
+        }
+      } catch (e) {}
       renderProtectArea();
 
       /* ================= Ações (delegação de cliques) ================= */
