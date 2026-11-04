@@ -330,7 +330,7 @@
         </div>
         <div class="dangerzone">
           <h3>⚠ Zona de perigo — reiniciar</h3>
-          <p>Apaga <b>todos</b> os hábitos, marcas, tarefas e planos salvos neste aparelho e recomeça do zero (um ciclo novo começa no dia do reinício). Se quiser guardar o histórico, exporte antes.</p>
+          <p>Apaga <b>tudo</b> o que está salvo neste aparelho — hábitos (inclusive a lista), marcas, tarefas e planos — e o app volta <b>completamente vazio</b>, sem nenhum hábito. Você cria os hábitos do novo ciclo do zero. Se quiser guardar o histórico, exporte antes.</p>
           <div id="protect-area"></div>
           <div class="row">
             <button class="btn-danger" data-action="reset-all">🗑 Reiniciar tudo (zerar)</button>
@@ -1236,11 +1236,13 @@
       }
       function doReset() {
         try { sessionStorage.setItem("vida90-reset-ok", "1"); } catch (e) {}
-        try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+        /* zero absoluto: grava um estado vazio (sem hábitos, marcas, tarefas nem planos).
+           Não basta remover a chave — sem chave, o app recarrega o modelo inicial com os 3 hábitos. */
+        saveData({ version: 1, habits: [], marks: {}, tasks: [], plans: {} });
         location.reload();
       }
       function resetAll() {
-        if (!confirm("Reiniciar o VIDA 90?\n\nIsso apaga TODOS os hábitos, marcas, tarefas e planos salvos neste aparelho e começa um ciclo novo do zero.\n\nEssa ação não tem volta. Continuar?")) return;
+        if (!confirm("Reiniciar o VIDA 90?\n\nIsso apaga TUDO o que está salvo neste aparelho: os hábitos (inclusive a lista), marcas, tarefas e planos. O app volta completamente vazio, sem nenhum hábito — você cria os hábitos do novo ciclo do zero.\n\nEssa ação não tem volta. Continuar?")) return;
         var a = authGet();
         if (a && webauthnOK()) {
           toast("Confirme com sua digital ou a senha do celular…");
